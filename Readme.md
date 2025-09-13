@@ -1,4 +1,4 @@
-**1. what is Api?**
+**1. what is API?**
 
 An API (Application Programming Interface) is a set of rules and protocols that allows different software applications to communicate with each other, enabling them to exchange data and functionality.
 
@@ -122,3 +122,183 @@ All data sent between client and server is encrypted using the session key.
 
 ---
 
+**7. Difference between API and REST API?**
+
+| Feature          | API                           | REST API                       |
+| ---------------- | ----------------------------- | ------------------------------ |
+| **Type**         | Broad concept                 | Subtype of Web API             |
+| **Protocol**     | Any (HTTP, TCP, SDKs, etc.)   | HTTP only                      |
+| **Design Style** | Any (SOAP, GraphQL, etc.)     | REST architecture              |
+| **Data Format**  | Any (binary, XML, JSON, etc.) | Typically JSON or XML          |
+| **Usage**        | OS, libraries, databases, web | Web services only              |
+| **Stateless?**   | Not always                    | Yes, always (REST requirement) |
+
+
+---
+
+**8. REST vs SOAP vs GraphQL**
+
+
+| Feature            | **REST API**                            | **SOAP API**                          | **GraphQL API**                                                           |
+| ------------------ | --------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------- |
+| **Protocol**       | HTTP (or other protocols)               | XML-based protocol (often HTTP)       | Uses HTTP, but is a query language                                        |
+| **Message Format** | JSON, XML, etc.                         | XML                                   | JSON                                                                      |
+| **State**          | Stateless                               | Stateful                              | Stateless (but can support real-time with subscriptions)                  |
+| **Complexity**     | Simple, widely used                     | Complex, verbose (XML)                | Complex, powerful, but requires more tooling                              |
+| **Flexibility**    | Moderate (can have over-fetching)       | Low (very rigid, strict standards)    | Very flexible (client defines the query)                                  |
+| **Caching**        | Built-in caching support (HTTP caching) | No inherent caching                   | No inherent caching (needs custom setup)                                  |
+| **Security**       | Depends on implementation (e.g., OAuth) | Built-in security (WS-Security)       | Depends on implementation (e.g., JWT)                                     |
+| **Error Handling** | Standard HTTP error codes               | Detailed fault codes                  | Errors included in the response with error messages                       |
+| **Use Case**       | General-purpose, CRUD operations        | Enterprise-level, secure transactions | Real-time apps, flexible data queries (e.g., mobile, frontend-heavy apps) |
+
+
+**When to Use Each:**
+
+**REST:**
+
+Ideal for general web services and CRUD operations.
+
+When simplicity and wide adoption are priorities.
+
+Best for public APIs where caching, performance, and simplicity matter.
+
+**SOAP:**
+
+When security and transaction integrity are critical (e.g., financial services, payment gateways).
+
+When working in enterprise environments where strict standards and reliability are required.
+
+Where features like WS-Security are necessary.
+
+**GraphQL:**
+
+When clients need precise control over the data they query.
+
+In mobile or frontend-heavy applications where over-fetching/under-fetching is a concern.
+
+For real-time applications (e.g., live chat, social media feeds).
+
+---
+
+**9. main API security practices**
+
+
+**🔐 1. HTTPS (TLS Encryption)**
+
+All API traffic should go over HTTPS, not HTTP.
+
+Encrypts data in transit → prevents eavesdropping and man-in-the-middle attacks.
+
+Use strong TLS versions (TLS 1.2 or 1.3).
+
+**🔐 2. OAuth 2.0**
+
+Industry-standard authorization framework.
+
+Allows third-party apps to access an API without exposing user credentials.
+
+Uses access tokens, refresh tokens, scopes, and expiration.
+
+Example: “Login with Google.”
+
+**🔐 3. WebAuthn**
+
+Modern authentication standard (FIDO2).
+
+Provides passwordless or multi-factor authentication.
+
+Uses public-key cryptography, making phishing much harder.
+
+**🔐 4. Implement Authorization**
+
+Clearly separate authentication (who you are) from authorization (what you can do).
+
+Use RBAC (Role-Based Access Control) or ABAC (Attribute-Based Access Control).
+
+Enforce least privilege: users/services get only what they need.
+
+**🔐 5. Leveled API Keys**
+
+Issue API keys with different access levels:
+
+Read-only keys.
+
+Read-write keys.
+
+Admin keys.
+
+Rotate and revoke keys regularly.
+
+Keep keys secret (not in public repos).
+
+**🔐 6. Rate Limiting & Throttling**
+
+Limit the number of requests per client per time window.
+
+Protects against DoS attacks and API abuse.
+
+Common patterns: 1000 requests/minute per user.
+
+**🔐 7. API Versioning**
+
+Maintain separate versions (v1, v2) to handle breaking changes.
+
+Allows deprecation without breaking existing clients.
+
+Helps maintain security patches for older versions.
+
+**🔐 8. Allow Listing (a.k.a. Whitelisting)**
+
+Restrict API access to specific IPs, apps, or organizations.
+
+Blocks unknown or malicious sources from calling your API.
+
+**🔐 9. OWASP API Security Risks**
+
+Key risks to mitigate (per OWASP API Security Top 10):
+
+Broken Object Level Authorization (BOLA).
+
+Broken User Authentication.
+
+Excessive Data Exposure.
+
+Lack of Rate Limiting.
+
+Security Misconfigurations.
+
+Injection attacks (SQLi, NoSQLi).
+
+Insufficient Logging & Monitoring.
+
+**🔐 10. API Gateway**
+
+A central point to enforce security controls:
+
+Authentication.
+
+Rate limiting.
+
+Logging.
+
+Routing and load balancing.
+
+Examples: Kong, AWS API Gateway, Apigee.
+
+**🔐 11. Error Handling**
+
+Don’t leak internal system details (stack traces, DB errors) in API responses.
+
+Use generic error messages (e.g., “Invalid credentials”).
+
+Use consistent HTTP status codes.
+
+**🔐 12. Input Validation**
+
+Validate and sanitize all input from clients.
+
+Use allow-lists for expected values.
+
+Protect against injection attacks (SQLi, XSS).
+
+Use JSON schema validation for API payloads.
