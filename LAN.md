@@ -163,3 +163,37 @@ C:\Windows\System32\drivers\etc\hosts
 ```text
 http://myfastapi.local:8000/
 ```
+
+---
+
+**What is a Private Endpoint?**
+
+A private endpoint is a network-accessible URL or IP that is restricted to a private network instead of being exposed to the public internet.
+
+**Key points:**
+
+Only devices inside your LAN or internal network can access it.
+
+Public internet cannot reach it (unless you explicitly allow it via VPN or port forwarding).
+
+Common in internal apps, databases, or APIs.
+
+**Why Use Private Endpoints?**
+
+Security: Your internal apps are not exposed to outside attacks.
+
+Compliance: Sensitive data (like HR or finance info) stays internal.
+
+Performance: LAN access is faster than routing through the internet.
+
+Isolation: Useful for testing or staging environments before going public.
+
+**How Private Endpoints Work**
+
+IP restriction: App listens on a private IP (like 192.168.1.100) or localhost.
+
+Firewall rules: Only allow specific IP ranges or devices.
+
+Optional DNS: Map a friendly name (like internal-app.local) to the private IP for easier access.
+
+No public routing: Router/NAT doesn’t forward this IP to the internet.
