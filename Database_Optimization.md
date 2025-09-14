@@ -271,3 +271,240 @@ Use bulk inserts and avoid N+1 queries.
 Consider read replicas for scale.
 
 Monitor everything.
+
+---
+
+**what is model?**
+
+a structured representation of your data
+
+we can build an API without models, but you’ll be doing more manual work and losing the main benefits (validation, docs, consistency).
+
+| Approach                                | API Validation | DB Interaction |
+| --------------------------------------- | -------------- | -------------- |
+| **Pydantic + SQLAlchemy** (recommended) | Automatic      | ORM style      |
+| **No Pydantic + SQLAlchemy**            | Manual         | ORM style      |
+| **No Pydantic + No SQLAlchemy**         | Manual         | Raw SQL        |
+
+
+**main_no_models.py — FastAPI App with Raw SQL**
+
+```text
+
+from fastapi import FastAPI, Request
+from sqlalchemy import create_engine, text
+
+# -------------------
+# Database Connection
+# -------------------
+DATABASE_URL = "sqlite:///./test_raw.db"
+
+# Using only engine, no ORM
+engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+
+# Create table manually with raw SQL
+with engine.connect() as conn:
+    conn.execute(
+        text("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
+            email TEXT
+        )
+        """)
+    )
+
+# -------------------
+# FastAPI App
+# -------------------
+app = FastAPI()
+
+# Create user (INSERT)
+@app.post("/users")
+async def create_user(request: Request):
+    data = await request.json()  # raw dict
+    name = data.get("name")
+    email = data.get("email")
+
+    if not name or not email:
+        return {"error": "name and email required"}
+
+    with engine.begin() as conn:
+        conn.execute(
+            text("INSERT INTO users (name, email) VALUES (:name, :email)"),
+            {"name": name, "email": email}
+        )
+
+    return {"message": f"User {name} added successfully"}
+
+# Read user by ID (SELECT)
+@app.get("/users/{user_id}")
+def get_user(user_id: int):
+    with engine.connect() as conn:
+        result = conn.execute(
+            text("SELECT id, name, email FROM users WHERE id = :id"),
+            {"id": user_id}
+        )
+        row = result.fetchone()
+
+    if not row:
+        return {"error": "User not found"}
+
+    return {"id": row.id, "name": row.name, "email": row.email}
+```
+
+**main_with_models.py — FastAPI App with Models**
+
+```text
+
+from fastapi import FastAPI, Depends, HTTPException
+from pydantic import BaseModel
+from sqlalchemy import Column, Integer, String, create_engine
+from sqlalchemy.orm import sessionmaker, declarative_base, Session
+
+# -------------------
+# Database Setup
+# -------------------
+DATABASE_URL = "sqlite:///./test_models.db"
+
+engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+
+# -------------------
+# SQLAlchemy Model (DB Table)
+# -------------------
+class UserDB(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String)
+    email = Column(String)
+
+Base.metadata.create_all(bind=engine)
+
+# -------------------
+# Pydantic Models (Request & Response)
+# -------------------
+class UserCreate(BaseModel):
+    name: str
+    email: str
+
+class UserResponse(UserCreate):
+    id: int
+    class Config:
+        orm_mode = True   # lets FastAPI read SQLAlchemy objects directly
+
+# -------------------
+# Dependency to get DB Session
+# -------------------
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+# -------------------
+# FastAPI App
+# -------------------
+app = FastAPI()
+
+# Create user
+@app.post("/users", response_model=UserResponse)
+def create_user(user: UserCreate, db: Session = Depends(get_db)):
+    db_user = UserDB(name=user.name, email=user.email)
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+# Read user by ID
+@app.get("/users/{user_id}", response_model=UserResponse)
+def read_user(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(UserDB).filter(UserDB.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+```
+
+| Feature               | With Models            | No Models           |
+| --------------------- | ---------------------- | ------------------- |
+| **Input Validation**  | Automatic via Pydantic | Manual              |
+| **Output Validation** | Automatic via Pydantic | Manual              |
+| **Database Mapping**  | SQLAlchemy ORM         | Raw SQL statements  |
+| **Docs**              | Auto-generated `/docs` | None/minimal        |
+| **ORM Convenience**   | Yes (db.query, db.add) | No (write SQL text) |
+
+
+---
+
+**What is an ORM?**
+
+ORM stands for Object–Relational Mapping.
+
+It’s a technique (or a library) that lets you interact with a database using Python objects instead of raw SQL.
+
+You define Python classes → ORM maps them to tables.
+
+You interact with those classes → ORM automatically generates SQL under the hood.
+
+**Without ORM (raw SQL):**
+
+```text
+
+cursor.execute("SELECT * FROM users WHERE id = ?", (1,))
+```
+
+**With ORM:**
+
+```text
+
+user = db.query(User).filter(User.id == 1).first()
+```
+```text
+# --- engine and session ---
+engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+
+# --- ORM model ---
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String)
+    email = Column(String)
+
+Base.metadata.create_all(bind=engine)   # ← creates the table
+
+# --- Dependency to get DB session ---
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+# --- FastAPI route ---
+@app.post("/users")
+def create_user(name: str, email: str, db: Session = Depends(get_db)):  # ← inject DB session here
+    new_user = User(name=name, email=email)  # ← ORM object created
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user
+```
+
+---
+
+**What Sequelize Actually Is**
+
+Sequelize is a Node.js ORM library.
+
+It’s written for JavaScript/TypeScript environments.
+
+It only works inside Node.js apps (Express, NestJS, Next.js, etc.).
+
+🔹 It does not run in Python, so you cannot use Sequelize inside FastAPI directly.
+
+---
+
