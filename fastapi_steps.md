@@ -32,6 +32,8 @@ myapi/
 
 Goal: validate input early and drop malicious/malformed requests.
 
+```text
+
 **schemas.py**
 
 from pydantic import BaseModel, Field, constr, EmailStr
@@ -48,10 +50,13 @@ class UserOut(BaseModel):
 
     class Config:
         orm_mode = True
+```
 
 Use constr, EmailStr, and explicit max_length to prevent huge payloads.
 
 Put API under /api/v1/... to support versioning.
+
+```text
 
 **main.py route example:**
 
@@ -64,11 +69,14 @@ app = FastAPI(title="My API", openapi_prefix="/api/v1")
 async def create_user(body: UserCreate):
     # body is already validated by Pydantic
     ...
+```
 ---
 
 **2) Authentication & Authorization (OAuth2/JWT + RBAC)**
 
 Goal: secure auth, short-lived tokens, refresh tokens and role checks.
+
+```text
 
 **auth.py**
 
@@ -117,10 +125,13 @@ def require_roles(*allowed_roles):
             raise HTTPException(status_code=403, detail="Forbidden")
         return user
     return role_checker
+```
 
 Use passlib for password hashing, python-jose (or pyjwt) for JWTs.
 
 Store only hashed passwords, never plaintext.
+
+```text
 
 **Token endpoint example**
 
@@ -138,6 +149,8 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db=Depends(...
     token = create_access_token(str(user.id), roles=user.roles)
     return {"access_token": token, "token_type": "bearer"}
 
+```
+
 ---
 
 **3) HTTPS / TLS & Transport Security**
@@ -147,6 +160,8 @@ Goal: always use TLS in production, set security headers.
 Dev: you can test local TLS with uvicorn using an SSLContext (self-signed), but production should use a reverse proxy (NGINX, Cloud Load Balancer) with real certs (Let's Encrypt/ACME).
 
 Set HSTS & security headers via middleware.
+
+```text
 
 **main.py (add middleware)**
 
@@ -163,6 +178,8 @@ async def security_headers(request, call_next):
     resp.headers["X-Content-Type-Options"] = "nosniff"
     return resp
 
+```
+
 Production: Terminate TLS at load balancer or NGINX. Avoid exposing DB/credentials on HTTP endpoints.
 
 ---
@@ -174,6 +191,8 @@ Goal: prevent large-payload DoS & XSS injection.
 Set client_max_body_size (nginx) or check Content-Length in middleware.
 
 Sanitize HTML content with libraries like bleach before storing or returning.
+
+```text
 
 **middleware.py (payload size)**
 
@@ -187,6 +206,8 @@ async def body_size_limit(request: Request, call_next):
     if cl and int(cl) > MAX_BODY:
         raise HTTPException(status_code=413, detail="Payload too large")
     return await call_next(request)
+
+```
 ---
 
 **5) Parameterized DB Access, Pagination & Streaming**
@@ -194,6 +215,8 @@ async def body_size_limit(request: Request, call_next):
 Goal: protect against SQLi, avoid loading millions of rows at once, use keyset pagination, stream large results.
 
 Use SQLAlchemy async (1.4+) or asyncpg. Example with SQLAlchemy async:
+
+```text
 
 **db.py**
 
@@ -203,6 +226,10 @@ from sqlalchemy.orm import sessionmaker
 DATABASE_URL = "postgresql+asyncpg://user:pass@localhost/db"
 engine = create_async_engine(DATABASE_URL, pool_size=20, max_overflow=0)
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+```
+
+```text
 
 **crud.py**
 
@@ -216,6 +243,9 @@ async def get_users_by_name(session: AsyncSession, name: str, limit: int = 100, 
     stmt = stmt.order_by(User.id).limit(limit)
     result = await session.execute(stmt)
     return result.all()
+```
+
+```text
 
 **Streaming large responses (generator)**
 
@@ -230,6 +260,8 @@ async def stream_users(session, name):
 async def users_stream(name: str, db=Depends(get_session)):
     return StreamingResponse(stream_users(db, name), media_type="application/x-ndjson")
 
+```
+
 Use keyset pagination (WHERE id > last_seen) for stable, fast paging.
 
 Always use parameterized queries (SQLAlchemy already does).
@@ -239,6 +271,8 @@ Always use parameterized queries (SQLAlchemy already does).
 **6) Caching (Redis) for Hot Data**
 
 Goal: reduce DB load for frequent reads.
+
+```text
 
 **cache.py**
 
@@ -252,6 +286,10 @@ async def get_cached_users(name):
 async def set_cached_users(name, users, ttl=60):
     await redis.set(f"users:{name}", json.dumps(users), ex=ttl)
 
+```
+
+```text
+
 **route example**
 
 @app.get("/users")
@@ -262,6 +300,8 @@ async def get_users(name: str, db=Depends(get_session)):
     await cache.set_cached_users(name, [u._asdict() for u in users], ttl=30)
     return users
 
+```
+
 Use short TTLs and invalidation on writes. For critical data use cache with versioning or pub/sub invalidation.
 
 ---
@@ -269,6 +309,8 @@ Use short TTLs and invalidation on writes. For critical data use cache with vers
 **7) Rate Limiting & Throttling**
 
 Goal: prevent brute-force and abuse.
+
+```text
 
 Simple Redis counter rate limiter (middleware or dependency):
 
@@ -288,6 +330,8 @@ async def rate_limit(request: Request):
     if count > RATE_LIMIT:
         raise HTTPException(status_code=429, detail="Too many requests")
 
+```
+
 Attach as dependency in endpoints that need protection, or as global middleware.
 
 For production use robust libraries (e.g., slowapi) or API gateways (Cloudflare, AWS API Gateway) for distributed rate-limiting.
@@ -297,6 +341,8 @@ For production use robust libraries (e.g., slowapi) or API gateways (Cloudflare,
 **8) Logging, Masking, Monitoring & Tracing**
 
 Goal: observability without exposing sensitive data.
+
+```text
 
 Logging configuration (basic JSON)
 
@@ -308,6 +354,10 @@ formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 logger.setLevel(logging.INFO)
+
+```
+
+```text
 
 **Mask sensitive headers & avoid logging full bodies**
 
@@ -325,10 +375,15 @@ async def log_requests(request: Request, call_next):
     })
     return resp
 
+```
+```text
+
 **Prometheus metrics**
 
 from prometheus_fastapi_instrumentator import Instrumentator
 Instrumentator().instrument(app).expose(app)
+
+```
 
 **Tracing**
 
@@ -346,12 +401,16 @@ Push logs to ELK / Graylog / Splunk / CloudWatch. Use structured JSON logs.
 
 Goal: no stack traces leaked, structured errors.
 
+```text
+
 from fastapi.responses import JSONResponse
 
 @app.exception_handler(Exception)
 async def generic_exception_handler(request, exc):
     logger.exception("Unhandled error")
     return JSONResponse({"detail": "Internal server error"}, status_code=500)
+
+```
 
 Return 401/403/404 with concise messages. Never return SQL errors or stack traces to clients.
 
@@ -360,6 +419,8 @@ Return 401/403/404 with concise messages. Never return SQL errors or stack trace
 **10) Vulnerability Scanning & Automated Tests (CI)**
 
 Goal: automate security checks and regression tests.
+
+```text
 
 Unit & integration test example (pytest)
 tests/test_sqli.py
@@ -372,6 +433,7 @@ client = TestClient(app)
 def test_login_injection():
     res = client.post("/api/v1/token", data={"username":"';--", "password":"x"})
     assert res.status_code == 401
+```
 
 **Security tooling in CI**
 
@@ -382,6 +444,8 @@ bandit (static security analyzer)
 OWASP ZAP or nikto for dynamic scanning
 
 pytest and pytest-cov for unit tests
+
+```text
 
 **Example GitHub Actions steps**
 
@@ -394,6 +458,7 @@ run pip-audit
 run bandit
 
 build docker image and scan image (e.g., Trivy)
+```
 
 ---
 
@@ -405,11 +470,15 @@ For dev: ENV variables (use .env carefully).
 
 For prod: use Vault, AWS Secrets Manager, GCP Secret Manager, or Azure Key Vault.
 
+```
+
 Example pattern (pseudocode):
 
 def get_secret(name):
     # in prod, call Vault/Secrets Manager API; in dev, read env var
     return os.getenv(name)
+
+```
 
 ---
 
@@ -422,6 +491,8 @@ DB-level encryption: enable disk/DB encryption (e.g., AWS RDS encryption).
 Field-level encryption for PII:
 
 Use KMS to encrypt/decrypt symmetric keys; use cryptography for AES to encrypt data before saving.
+
+```text
 
 Example (simplified):
 
@@ -437,9 +508,13 @@ def encrypt_field(plain):
 def decrypt_field(token):
     return fernet.decrypt(token.encode()).decode()
 
+```
+
 ---
 
 **13) Containerization & Deployment Best Practices**
+
+```text
 
 Dockerfile (multi-stage, minimal)
 
@@ -462,6 +537,8 @@ Run container as non-root user.
 Scan images with Trivy or similar.
 
 Keep base image small & up to date.
+
+```
 
 ---
 
@@ -495,6 +572,8 @@ Patch base OS & language runtime periodically.
 
 **16) Example: secure endpoint combining many pieces**
 
+```text
+
 from fastapi import APIRouter, Depends, HTTPException
 from app.auth import require_roles
 from app.db import AsyncSessionLocal
@@ -511,6 +590,8 @@ async def list_users(name: str, last_id: int | None = None, limit: int = 100, db
     users = await crud.get_users_by_name(db, name, limit=limit, last_id=last_id)
     await set_cached_users(f"{name}:{last_id}:{limit}", [u._asdict() for u in users], ttl=30)
     return users
+
+```
 
 This shows: validation, rate-limiting, DB parameterized query, caching, and pagination.
 
