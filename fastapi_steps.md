@@ -6,8 +6,6 @@
 
 This project demonstrates a **production-style FastAPI application** with security, authentication, caching, CI/CD and monitoring baked in.
 
----
-
 ## 📂 Project Structure
 
 ```text
@@ -26,7 +24,7 @@ myapi/
 │  └─ test_users.py    # example pytest test
 ├─ Dockerfile
 └─ .github/workflows/ci.yml  # GitHub Actions pipeline
-
+```
 
 ---
 
