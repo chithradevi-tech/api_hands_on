@@ -2,21 +2,31 @@
 
 **Project structure (recommended)**
 
+# Secure FastAPI Example
+
+This project demonstrates a **production-style FastAPI application** with security, authentication, caching, CI/CD and monitoring baked in.
+
+---
+
+## 📂 Project Structure
+
+```text
 myapi/
 ├─ app/
-│  ├─ main.py               # FastAPI app + middleware + routes
-│  ├─ db.py                 # async DB engine / session
-│  ├─ models.py             # SQLAlchemy models
-│  ├─ schemas.py            # Pydantic request/response models
-│  ├─ crud.py               # DB access functions
-│  ├─ auth.py               # JWT, password hashing, auth deps
-│  ├─ middleware.py         # logging, rate-limiting, cors, etc
-│  ├─ cache.py              # Redis cache helpers
-│  └─ utils.py              # helpers (masking, encryption helpers)
+│  ├─ main.py          # FastAPI app + middleware + routes
+│  ├─ db.py            # async DB engine / session
+│  ├─ models.py        # SQLAlchemy models
+│  ├─ schemas.py       # Pydantic request/response models
+│  ├─ crud.py          # DB access functions
+│  ├─ auth.py          # JWT, password hashing, auth deps
+│  ├─ middleware.py    # logging, rate-limiting, cors, etc.
+│  ├─ cache.py         # Redis cache helpers
+│  └─ utils.py         # helpers (masking, encryption helpers)
 ├─ tests/
-│  └─ test_users.py
+│  └─ test_users.py    # example pytest test
 ├─ Dockerfile
-└─ .github/workflows/ci.yml
+└─ .github/workflows/ci.yml  # GitHub Actions pipeline
+
 
 ---
 
